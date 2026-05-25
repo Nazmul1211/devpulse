@@ -41,9 +41,9 @@ const auth = () => {
         [decoded.id],
       );
 
-    //   console.log(userData);
+      console.log(userData.rows[0]);
 
-    const user = userData.rows[0];
+    // const user = userData.rows[0];
 
     if(userData.rowCount === 0){
         return sendResponse(res, {

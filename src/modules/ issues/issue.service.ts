@@ -1,6 +1,7 @@
 import config from "../../config";
 import { pool } from "../../db";
 import jwt, { type JwtPayload } from "jsonwebtoken";
+import sendResponse from "../../utils/sendResponse";
 
 const createIssuesIntoDB = async (payload: any) => {
   try {
@@ -133,8 +134,65 @@ const getSingleIssuesFromDB = async (id: string) => {
   };
 };
 
+const updateIssueIntoDB = async (
+  issueId: string,
+  updates: any,
+  userId: number,
+  userRole: string
+) => {
+  try {
+    // 1. Fetch the existing issue to check permissions
+    const existingIssueResult = await pool.query(
+      `SELECT * FROM issues WHERE id=$1`,
+      [issueId]
+    );
+
+    if (existingIssueResult.rowCount === 0) {
+      throw new Error("Issue not found");
+    }
+
+    const issue = existingIssueResult.rows[0];
+
+    // 2. Check Role & Permissions
+    const isMaintainer = userRole === "maintainer";
+    const isOwnerContributor =
+      userRole === "contributor" &&
+      issue.reporter_id === userId &&
+      issue.status === "open";
+
+    if (!isMaintainer && !isOwnerContributor) {
+      throw new Error(
+        "Unauthorized: Only maintainers or the original contributor (if issue is open) can update this issue."
+      );
+    }
+
+    // 3. Update the Issue
+    const { title, description, type } = updates; // You can also allow 'status' if needed
+
+    const updatedIssueResult = await pool.query(
+      `
+        UPDATE issues 
+        SET
+        title = COALESCE($1, title),
+        description = COALESCE($2, description),
+        type = COALESCE($3, type),
+        updated_at = NOW()
+        WHERE id = $4 
+        RETURNING *
+      `,
+      [title, description, type, issueId]
+    );
+
+    return updatedIssueResult.rows[0];
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
 export const issuesService = {
   createIssuesIntoDB,
   getAllIssuesFromDB,
   getSingleIssuesFromDB,
+  updateIssueIntoDB,
 };

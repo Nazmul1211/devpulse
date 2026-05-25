@@ -1,6 +1,9 @@
 import type { Request, Response } from "express";
 import sendResponse from "../../utils/sendResponse";
 import { issuesService } from "./issue.service";
+import type { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+import config from "../../config";
 
 const createNewIssues = async (req: Request, res: Response) => {
   // console.log(req.body);
@@ -79,8 +82,60 @@ const getSingleIssues = async (req: Request, res: Response) => {
   }
 };
 
+const updateIssues = async (req: Request, res: Response) => {
+  try {
+    const token = req.headers.authorization;
+
+    if (!token) {
+      return sendResponse(res, {
+        statusCode: 401,
+        success: false,
+        message: "Unathorized Access",
+      });
+    }
+
+    const decoded = jwt.verify(
+      token as string,
+      config.secret as string
+    ) as JwtPayload;
+
+    const issueId = req.params.id;
+    const updatedIssue = req.body;
+    const userId = decoded.id;
+    const userRole = decoded.role;
+
+    const result = await issuesService.updateIssueIntoDB(
+      issueId,
+      updatedIssue,
+      userId,
+      userRole
+    );
+
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      message: "Issue updated successfully",
+      data: result,
+    });
+  } catch (error: any) {
+    const statusCode =
+      error.message === "Issue not found"
+        ? 404
+        : error.message.includes("Unauthorized")
+        ? 403
+        : 500;
+
+    sendResponse(res, {
+      statusCode: statusCode,
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 export const issueController = {
   createNewIssues,
   getAllIssues,
   getSingleIssues,
+  updateIssues,
 };
