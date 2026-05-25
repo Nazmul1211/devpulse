@@ -1,49 +1,100 @@
+import config from "../../config";
 import { pool } from "../../db";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 
+const createIssuesIntoDB = async (payload: any) => {
+  try {
+    const payloadBody = payload.body;
+    const { title, description, type, status } = payloadBody;
+    // console.log("Issue service: ", payloadBody);
 
-const createIssuesIntoDB = (payload: any) => {
-    const {title, description, bug} = payload 
-    console.log("Issue service: ", payload);
+    // 1. check if the token exists
+    // 2. verify the token
+    // 3. find the user into database
 
-//     {
-//   "title": "Database connection timeout under load",
-//   "description": "Pool exhausts after 50+ concurrent queries, causing 500 errors",
-//   "type": "bug"
-// }
+    //   check if the token exists
+    const token = payload.headers.authorization;
 
-    // "id": 45,
-    // "title": "Database connection timeout under load", 
-    // "description": "Pool exhausts after 50+ concurrent queries, causing 500 errors",
-    // "type": "bug",
-    // "status": "open",
-    // "reporter_id": 1,
-    // "created_at": "2026-01-20T10:30:00Z",
-    // "updated_at": "2026-01-20T10:30:00Z"
+    // token verification
+    const decoded = jwt.verify(
+      token as string,
+      config.secret as string,
+    ) as JwtPayload;
 
+    // console.log(decoded);
 
-    // jwt
-    // id(reporter_id) name role
+    // find the user into database
+    const userData = await pool.query(
+      `
+        SELECT * FROM users WHERE id=$1
+        `,
+      [decoded.id],
+    );
 
-    // query to findout user role 
+    console.log(userData.rows[0]);
 
+    const user = userData.rows[0];
 
+    // insert new issues into the issues table
+    const newIssues = await pool.query(
+      `
+        INSERT INTO issues(title, description, type, status, reporter_id) VALUES($1,$2,$3,$4,$5)
+        RETURNING *
+        `,
+      [title, description, type, status, user.id],
+    );
 
-    try {
+    console.log(newIssues);
 
+    return newIssues.rows[0];
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
 
-        // const newIssues = pool.query(`
-        //     INSERT INTO issues(title, descriptioin, type, status, reorter_id) VALUES($1,$2,$3,$4, COALESCE(&5, users.id))
-        //     `, [title, description, type, status, reorter_id]);
+const getAllIssuesFromDB = async () => {
+  const issues = await pool.query(`
+        SELECT * FROM issues
+        `);
 
+  // console.log(issues.rows);
 
-        //     return newIssues; 
-    } catch (error) {
-        console.log(error);
-    }
+  // We use Promise.all to wait for ALL the inner queries to finish
 
-}
+  const issueWithUser: any = [];
 
+  const results = await Promise.all(
+    issues.rows.map(async (row) => {
+      // Note the added 'await' and 'FROM' keyword
+      const userResult = await pool.query(`SELECT * FROM users WHERE id=$1`, [
+        row.reporter_id,
+      ]);
+
+      const user = userResult.rows[0];
+
+      // Return the combined object structure
+      issueWithUser.push({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        type: row.type,
+        status: row.status,
+        reporter: {
+          id: user.id,
+          name: user.name,
+          role: user.role,
+        },
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      });
+    }),
+  );
+
+  return issueWithUser;
+};
 
 export const issuesService = {
-    createIssuesIntoDB,
-}
+  createIssuesIntoDB,
+  getAllIssuesFromDB,
+};
