@@ -2,6 +2,7 @@ import express, { type Application, type Request, type Response } from "express"
 import cors from "cors";
 import { apiRoutes } from "./modules/auth/auth.route";
 import globlaErrorHandler from "./middleware/globalErrorHandler";
+import issueRouter from "./modules/ issues/issue.route";
 
 const app : Application = express();
 
@@ -18,6 +19,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.use("/api/auth", apiRoutes);
+app.use("/api/", issueRouter);
 
 // app.use(globlaErrorHandler);
 

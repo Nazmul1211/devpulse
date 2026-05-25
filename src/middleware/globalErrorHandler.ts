@@ -8,5 +8,6 @@ const globlaErrorHandler = (err: any, req: Request, res: Response, next: NextFun
     });
   };
 
+  
 
   export default globlaErrorHandler;

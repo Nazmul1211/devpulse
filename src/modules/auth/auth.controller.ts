@@ -24,6 +24,30 @@ const createUser = async(req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+
+const getSingleUser = async(req: Request, res: Response) => {
+    const payload = await req.body;
+    const {email, password} = payload;
+    // console.log(payload);
+
+    try {
+        const result = await devService.getSingleUserFromDB(email as string, password as string);
+        // console.log(result);
+        if(result){
+            sendResponse(res, {
+                statusCode: 200,
+                success: true,
+                message: "Login successful",
+                data: result
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
 export const authController = {
   createUser,
+  getSingleUser,
 };
