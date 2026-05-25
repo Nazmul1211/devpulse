@@ -94,7 +94,47 @@ const getAllIssuesFromDB = async () => {
   return issueWithUser;
 };
 
+const getSingleIssuesFromDB = async (id: string) => {
+  const issue = await pool.query(
+    `
+        SELECT * FROM issues WHERE id=$1
+        `,
+    [id],
+  );
+
+  console.log(issue.rows[0]);
+
+  if (issue.rowCount === 0) {
+    return null;
+  }
+
+  const singleIssue = issue.rows[0];
+
+  // Note the added 'await' and 'FROM' keyword
+  const userResult = await pool.query(`SELECT * FROM users WHERE id=$1`, [
+    singleIssue.reporter_id,
+  ]);
+
+  const user = userResult.rows[0];
+
+  return {
+    id: singleIssue.id,
+    title: singleIssue.title,
+    description: singleIssue.description,
+    type: singleIssue.type,
+    status: singleIssue.status,
+    reporter: {
+      id: user.id,
+      name: user.name,
+      role: user.role,
+    },
+    created_at: singleIssue.created_at,
+    updated_at: singleIssue.updated_at,
+  };
+};
+
 export const issuesService = {
   createIssuesIntoDB,
   getAllIssuesFromDB,
+  getSingleIssuesFromDB,
 };

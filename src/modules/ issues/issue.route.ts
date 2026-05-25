@@ -8,5 +8,7 @@ const issueRouter = Router();
 
 issueRouter.post("/issues", auth(), issueController.createNewIssues);
 issueRouter.get("/issues", issueController.getAllIssues);
+issueRouter.get("/issues/:id", issueController.getSingleIssues);
+
 
 export default issueRouter;
