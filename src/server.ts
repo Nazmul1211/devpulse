@@ -1,17 +1,12 @@
-import express, { type Request, type Response } from "express";
-import { apiRoutes } from "./modules/auth/auth.route";
+import app from "./app";
+import config from "./config";
+import { initDB } from "./db";
 
-const app = express()
-const port = 3000
+const main = async () => {
+  await initDB();
+  app.listen(config.port, () => {
+    console.log(`Example app listening on port ${config.port}`);
+  });
+};
 
-app.get('/', (req : Request, res: Response) => {
-  res.send('Hello World!')
-})
-
-app.use("/api/auth/singup", apiRoutes);
-
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
-
+main();
