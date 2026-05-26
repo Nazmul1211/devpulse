@@ -6,8 +6,6 @@ import jwt from "jsonwebtoken";
 import config from "../../config";
 
 const createNewIssues = async (req: Request, res: Response) => {
-  // console.log(req.body);
-
   try {
     const result = await issuesService.createIssuesIntoDB(req as object);
 
@@ -96,10 +94,10 @@ const updateIssues = async (req: Request, res: Response) => {
 
     const decoded = jwt.verify(
       token as string,
-      config.secret as string
+      config.secret as string,
     ) as JwtPayload;
 
-    const issueId = req.params.id;
+    const issueId = req.params.id as string;
     const updatedIssue = req.body;
     const userId = decoded.id;
     const userRole = decoded.role;
@@ -108,7 +106,7 @@ const updateIssues = async (req: Request, res: Response) => {
       issueId,
       updatedIssue,
       userId,
-      userRole
+      userRole,
     );
 
     sendResponse(res, {
@@ -122,11 +120,60 @@ const updateIssues = async (req: Request, res: Response) => {
       error.message === "Issue not found"
         ? 404
         : error.message.includes("Unauthorized")
-        ? 403
-        : 500;
+          ? 403
+          : 500;
 
     sendResponse(res, {
       statusCode: statusCode,
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const deleteIssue = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    const token = req.headers.authorization;
+
+    if (!token) {
+      return sendResponse(res, {
+        statusCode: 401,
+        success: false,
+        message: "Unathorized Access",
+      });
+    }
+
+    const decoded = jwt.verify(
+      token as string,
+      config.secret as string,
+    ) as JwtPayload;
+
+    const userRole = decoded.role;
+
+    const result = await issuesService.deleteIssueFromDB(
+      id as string,
+      userRole as string,
+    );
+
+    console.log("result", result);
+
+    if (!result) {
+      return sendResponse(res, {
+        statusCode: 404,
+        success: false,
+        message: "Issue not found",
+      });
+    }
+
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      message: "Issue deleted successfully",
+    });
+  } catch (error: any) {
+    sendResponse(res, {
+      statusCode: 500,
       success: false,
       message: error.message,
     });
@@ -138,4 +185,5 @@ export const issueController = {
   getAllIssues,
   getSingleIssues,
   updateIssues,
+  deleteIssue,
 };
