@@ -18,3 +18,5 @@ export interface IUpdateIssue {
   type?: string;
   status?: string;
 }
+
+

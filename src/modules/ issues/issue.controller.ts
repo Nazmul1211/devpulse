@@ -7,7 +7,10 @@ import config from "../../config";
 
 const createNewIssues = async (req: Request, res: Response) => {
   try {
-    const result = await issuesService.createIssuesIntoDB(req as object);
+    const result = await issuesService.createIssuesIntoDB(
+      req.body,
+      req.user?.id
+    );
 
     if (result) {
       sendResponse(res, {
@@ -82,25 +85,10 @@ const getSingleIssues = async (req: Request, res: Response) => {
 
 const updateIssues = async (req: Request, res: Response) => {
   try {
-    const token = req.headers.authorization;
-
-    if (!token) {
-      return sendResponse(res, {
-        statusCode: 401,
-        success: false,
-        message: "Unathorized Access",
-      });
-    }
-
-    const decoded = jwt.verify(
-      token as string,
-      config.secret as string,
-    ) as JwtPayload;
-
     const issueId = req.params.id as string;
     const updatedIssue = req.body;
-    const userId = decoded.id;
-    const userRole = decoded.role;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
 
     const result = await issuesService.updateIssueIntoDB(
       issueId,
@@ -134,22 +122,7 @@ const updateIssues = async (req: Request, res: Response) => {
 const deleteIssue = async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
-    const token = req.headers.authorization;
-
-    if (!token) {
-      return sendResponse(res, {
-        statusCode: 401,
-        success: false,
-        message: "Unathorized Access",
-      });
-    }
-
-    const decoded = jwt.verify(
-      token as string,
-      config.secret as string,
-    ) as JwtPayload;
-
-    const userRole = decoded.role;
+    const userRole = req.user?.role;
 
     const result = await issuesService.deleteIssueFromDB(
       id as string,

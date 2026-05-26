@@ -1,48 +1,17 @@
-import config from "../../config";
 import { pool } from "../../db";
-import jwt, { type JwtPayload } from "jsonwebtoken";
 import type { IIssue, IUpdateIssue } from "./issue.interface";
 
-const createIssuesIntoDB = async (payload: any) => {
+const createIssuesIntoDB = async (payload: IIssue, userId: number | string) => {
   try {
-    const payloadBody = payload.body as IIssue;
-    const { title, description, type, status } = payloadBody;
-    // console.log("Issue service: ", payloadBody);
-
-    // 1. check if the token exists
-    // 2. verify the token
-    // 3. find the user into database
-
-    //   check if the token exists
-    const token = payload.headers.authorization;
-
-    // token verification
-    const decoded = jwt.verify(
-      token as string,
-      config.secret as string,
-    ) as JwtPayload;
-
-    // console.log(decoded);
-
-    // find the user into database
-    const userData = await pool.query(
-      `
-        SELECT * FROM users WHERE id=$1
-        `,
-      [decoded.id],
-    );
-
-    console.log(userData.rows[0]);
-
-    const user = userData.rows[0];
-
-    // insert new issues into the issues table
+    const { title, description, type, status } = payload;
+    
+    // inserting new issues into issues table
     const newIssues = await pool.query(
       `
         INSERT INTO issues(title, description, type, status, reporter_id) VALUES($1,$2,$3,$4,$5)
         RETURNING *
         `,
-      [title, description, type, status, user.id],
+      [title, description, type, status, userId],
     );
 
     console.log(newIssues);
@@ -118,6 +87,8 @@ const getSingleIssuesFromDB = async (id: string) => {
 
   const user = userResult.rows[0];
 
+
+  // Return the combined object structure
   return {
     id: singleIssue.id,
     title: singleIssue.title,
@@ -167,7 +138,7 @@ const updateIssueIntoDB = async (
     }
 
     // 3. Update the Issue
-    const { title, description, type } = updates; // You can also allow 'status' if needed
+    const { title, description, type } = updates; 
 
     const updatedIssueResult = await pool.query(
       `
