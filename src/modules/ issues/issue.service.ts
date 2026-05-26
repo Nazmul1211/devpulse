@@ -1,10 +1,11 @@
 import config from "../../config";
 import { pool } from "../../db";
 import jwt, { type JwtPayload } from "jsonwebtoken";
+import type { IIssue, IUpdateIssue } from "./issue.interface";
 
 const createIssuesIntoDB = async (payload: any) => {
   try {
-    const payloadBody = payload.body;
+    const payloadBody = payload.body as IIssue;
     const { title, description, type, status } = payloadBody;
     // console.log("Issue service: ", payloadBody);
 
@@ -135,7 +136,7 @@ const getSingleIssuesFromDB = async (id: string) => {
 
 const updateIssueIntoDB = async (
   issueId: string,
-  updates: any,
+  updates: IUpdateIssue,
   userId: number,
   userRole: string
 ) => {
