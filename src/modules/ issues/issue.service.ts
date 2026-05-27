@@ -5,7 +5,7 @@ const createIssuesIntoDB = async (payload: IIssue, userId: number | string) => {
   try {
     const { title, description, type, status } = payload;
     
-    // inserting new issues into issues table
+
     const newIssues = await pool.query(
       `
         INSERT INTO issues(title, description, type, status, reporter_id) VALUES($1,$2,$3,$4,$5)
@@ -23,20 +23,41 @@ const createIssuesIntoDB = async (payload: IIssue, userId: number | string) => {
   }
 };
 
-const getAllIssuesFromDB = async () => {
-  const issues = await pool.query(`
-        SELECT * FROM issues
-        `);
+const getAllIssuesFromDB = async (query: any) => {
+
+  let sqlText = `SELECT * FROM issues WHERE 1=1`;
+
+  const values: any[] = [];
+  let paramCounter = 1;
+
+  if (query.type) {
+    sqlText += ` AND type = $${paramCounter}`;
+    values.push(query.type);
+    paramCounter++;
+  }
+
+  if (query.status) {
+    sqlText += ` AND status = $${paramCounter}`;
+    values.push(query.status);
+    paramCounter++;
+  }
+
+  if (query.sort === "oldest") {
+    sqlText += ` ORDER BY created_at ASC`;
+  } 
+  else {
+    sqlText += ` ORDER BY created_at DESC`;
+  }
+
+  const issues = await pool.query(sqlText, values);
 
   // console.log(issues.rows);
 
   // We use Promise.all to wait for ALL the inner queries to finish
 
-  const issueWithUser: any = [];
-
-  const results = await Promise.all(
+  const issueWithUser = await Promise.all(
     issues.rows.map(async (row) => {
-      // Note the added 'await' and 'FROM' keyword
+
       const userResult = await pool.query(`SELECT * FROM users WHERE id=$1`, [
         row.reporter_id,
       ]);
@@ -44,7 +65,7 @@ const getAllIssuesFromDB = async () => {
       const user = userResult.rows[0];
 
       // Return the combined object structure
-      issueWithUser.push({
+      return {
         id: row.id,
         title: row.title,
         description: row.description,
@@ -57,7 +78,7 @@ const getAllIssuesFromDB = async () => {
         },
         created_at: row.created_at,
         updated_at: row.updated_at,
-      });
+      };
     }),
   );
 
@@ -80,7 +101,7 @@ const getSingleIssuesFromDB = async (id: string) => {
 
   const singleIssue = issue.rows[0];
 
-  // Note the added 'await' and 'FROM' keyword
+
   const userResult = await pool.query(`SELECT * FROM users WHERE id=$1`, [
     singleIssue.reporter_id,
   ]);

@@ -1,9 +1,6 @@
 import type { Request, Response } from "express";
 import sendResponse from "../../utils/sendResponse";
 import { issuesService } from "./issue.service";
-import type { JwtPayload } from "jsonwebtoken";
-import jwt from "jsonwebtoken";
-import config from "../../config";
 
 const createNewIssues = async (req: Request, res: Response) => {
   try {
@@ -31,8 +28,44 @@ const createNewIssues = async (req: Request, res: Response) => {
 
 const getAllIssues = async (req: Request, res: Response) => {
   try {
-    console.log("Issue routes hitted.");
-    const result = await issuesService.getAllIssuesFromDB();
+    // console.log("Issue routes hitted.");
+    
+    // Catching the query params after the '?' in the URL
+    const queryParams = req.query; 
+
+
+    const validTypes = ["bug", "feature_request"];
+    
+    if (queryParams.type && !validTypes.includes(queryParams.type as string)) {
+      return sendResponse(res, {
+        statusCode: 400,
+        success: false,
+        message: "Invalid type. It must be 'bug' or 'feature_request'",
+      });
+    }
+
+
+    const validStatuses = ["open", "in_progress", "resolved", "closed"];
+
+    if (queryParams.status && !validStatuses.includes(queryParams.status as string)) {
+      return sendResponse(res, {
+        statusCode: 400,
+        success: false,
+        message: "Invalid status. It must be 'open', 'in_progress', or 'resolved'",
+      });
+    }
+
+ 
+    const result = await issuesService.getAllIssuesFromDB(queryParams);
+
+    if (result.length === 0) {
+      return sendResponse(res, {
+        statusCode: 404,
+        success: false,
+        message: "No issues found for the given criteria",
+        data: []
+      });
+    }
 
     sendResponse(res, {
       statusCode: 200,
