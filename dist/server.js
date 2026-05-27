@@ -180,6 +180,15 @@ router.post("/signup", authController.createUser);
 router.post("/login", authController.getSingleUser);
 var apiRoutes = router;
 
+// src/middleware/globalErrorHandler.ts
+var globlaErrorHandler = (err, req, res, next) => {
+  res.status(500).json({
+    success: false,
+    message: err.message || "Internal Server Error"
+  });
+};
+var globalErrorHandler_default = globlaErrorHandler;
+
 // src/modules/ issues/issue.route.ts
 import { Router as Router2 } from "express";
 
@@ -553,6 +562,7 @@ app.get("/", (req, res) => {
 });
 app.use("/api/auth", apiRoutes);
 app.use("/api/", issue_route_default);
+app.use(globalErrorHandler_default);
 var app_default = app;
 
 // src/server.ts
