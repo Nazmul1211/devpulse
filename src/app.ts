@@ -21,6 +21,6 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/api/auth", apiRoutes);
 app.use("/api/", issueRouter);
 
-app.use(globlaErrorHandler);
+app.use(globlaErrorHandler); 
 
 export default app;
