@@ -3,18 +3,15 @@ import type { IIssue, IUpdateIssue } from "./issue.interface";
 
 const createIssuesIntoDB = async (payload: IIssue, userId: number | string) => {
   try {
-    const { title, description, type, status } = payload;
-    
+    const { title, description, type } = payload;
 
     const newIssues = await pool.query(
       `
-        INSERT INTO issues(title, description, type, status, reporter_id) VALUES($1,$2,$3,$4,$5)
+        INSERT INTO issues(title, description, type, reporter_id) VALUES($1,$2,$3,$4)
         RETURNING *
         `,
-      [title, description, type, status, userId],
+      [title, description, type, userId],
     );
-
-    console.log(newIssues);
 
     return newIssues.rows[0];
   } catch (error) {
@@ -159,7 +156,11 @@ const updateIssueIntoDB = async (
     }
 
     // 3. Update the Issue
-    const { title, description, type } = updates; 
+    const { title, description, type } = updates;
+
+    // Only maintainers can update the status
+    // Contributors can only update title, description, and type
+    const statusToUpdate = isMaintainer ? updates.status : undefined;
 
     const updatedIssueResult = await pool.query(
       `
@@ -168,11 +169,12 @@ const updateIssueIntoDB = async (
         title = COALESCE($1, title),
         description = COALESCE($2, description),
         type = COALESCE($3, type),
+        status = COALESCE($4, status),
         updated_at = NOW()
-        WHERE id = $4 
+        WHERE id = $5 
         RETURNING *
       `,
-      [title, description, type, issueId]
+      [title, description, type, statusToUpdate, issueId]
     );
 
     return updatedIssueResult.rows[0];

@@ -13,12 +13,10 @@ import { Router } from "express";
 // src/utils/sendResponse.ts
 var sendResponse = (res, payload) => {
   const { statusCode, success, message, data, error } = payload;
-  res.status(statusCode).json({
-    success,
-    message,
-    data,
-    error
-  });
+  const responseBody = { success, message };
+  if (data !== void 0) responseBody.data = data;
+  if (error !== void 0) responseBody.error = error;
+  res.status(statusCode).json(responseBody);
 };
 var sendResponse_default = sendResponse;
 
@@ -49,26 +47,40 @@ var initDB = async () => {
             CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             name TEXT,
-            email VARCHAR(25) UNIQUE NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            role VARCHAR(15) DEFAULT 'contributor',
+            role VARCHAR(50) DEFAULT 'contributor',
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW()
             )
             `);
     await pool.query(`
+            ALTER TABLE users
+              ALTER COLUMN email TYPE VARCHAR(255),
+              ALTER COLUMN password TYPE TEXT,
+              ALTER COLUMN role TYPE VARCHAR(50),
+              ALTER COLUMN role SET DEFAULT 'contributor'
+            `);
+    await pool.query(`
             CREATE TABLE IF NOT EXISTS issues (
             id SERIAL PRIMARY KEY,
-            title VARCHAR(100) NOT NULL,
+            title VARCHAR(150) NOT NULL,
             description TEXT NOT NULL,
-            type VARCHAR(15) NOT NULL CHECK (type IN ('bug', 'feature_request')),
-            status VARCHAR(15) DEFAULT 'open' CHECK (status IN ('open','in_progress','resolved')),
+            type VARCHAR(50) NOT NULL CHECK (type IN ('bug', 'feature_request')),
+            status VARCHAR(50) DEFAULT 'open' CHECK (status IN ('open','in_progress','resolved')),
             reporter_id INT REFERENCES users(id) ON DELETE CASCADE,
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW(),
             CONSTRAINT description_min_length CHECK (LENGTH(TRIM(description)) >= 20)
             )
             
+            `);
+    await pool.query(`
+            ALTER TABLE issues
+              ALTER COLUMN title TYPE VARCHAR(150),
+              ALTER COLUMN type TYPE VARCHAR(50),
+              ALTER COLUMN status TYPE VARCHAR(50),
+              ALTER COLUMN status SET DEFAULT 'open'
             `);
     console.log(`
  [ User and Issues table created successfully!! ] 
@@ -87,7 +99,6 @@ var createUserIntoDB = async (payload) => {
   }
   const { name, email, password, role } = payload;
   const hashPassword = await bcrypt.hash(password, 10);
-  console.log(payload, hashPassword);
   const result = await pool.query(
     `
         INSERT INTO users(name, email, password, role) VALUES ($1,$2,$3,COALESCE($4, 'contributor'))
@@ -121,7 +132,6 @@ var getSingleUserFromDB = async (email, password) => {
     expiresIn: config_default.token_expiration
   });
   delete user.password;
-  console.log("auth-service", accessToken, userData);
   return {
     token: accessToken,
     user: userData.rows[0]
@@ -195,15 +205,14 @@ import { Router as Router2 } from "express";
 // src/modules/ issues/issue.service.ts
 var createIssuesIntoDB = async (payload, userId) => {
   try {
-    const { title, description, type, status } = payload;
+    const { title, description, type } = payload;
     const newIssues = await pool.query(
       `
-        INSERT INTO issues(title, description, type, status, reporter_id) VALUES($1,$2,$3,$4,$5)
+        INSERT INTO issues(title, description, type, reporter_id) VALUES($1,$2,$3,$4)
         RETURNING *
         `,
-      [title, description, type, status, userId]
+      [title, description, type, userId]
     );
-    console.log(newIssues);
     return newIssues.rows[0];
   } catch (error) {
     console.log(error);
@@ -303,6 +312,7 @@ var updateIssueIntoDB = async (issueId, updates, userId, userRole) => {
       );
     }
     const { title, description, type } = updates;
+    const statusToUpdate = isMaintainer ? updates.status : void 0;
     const updatedIssueResult = await pool.query(
       `
         UPDATE issues 
@@ -310,11 +320,12 @@ var updateIssueIntoDB = async (issueId, updates, userId, userRole) => {
         title = COALESCE($1, title),
         description = COALESCE($2, description),
         type = COALESCE($3, type),
+        status = COALESCE($4, status),
         updated_at = NOW()
-        WHERE id = $4 
+        WHERE id = $5 
         RETURNING *
       `,
-      [title, description, type, issueId]
+      [title, description, type, statusToUpdate, issueId]
     );
     return updatedIssueResult.rows[0];
   } catch (error) {
@@ -359,7 +370,7 @@ var createNewIssues = async (req, res) => {
     }
   } catch (error) {
     sendResponse_default(res, {
-      statusCode: 401,
+      statusCode: 500,
       success: false,
       message: error.message
     });
@@ -376,7 +387,7 @@ var getAllIssues = async (req, res) => {
         message: "Invalid type. It must be 'bug' or 'feature_request'"
       });
     }
-    const validStatuses = ["open", "in_progress", "resolved", "closed"];
+    const validStatuses = ["open", "in_progress", "resolved"];
     if (queryParams.status && !validStatuses.includes(queryParams.status)) {
       return sendResponse_default(res, {
         statusCode: 400,
@@ -387,9 +398,9 @@ var getAllIssues = async (req, res) => {
     const result = await issuesService.getAllIssuesFromDB(queryParams);
     if (result.length === 0) {
       return sendResponse_default(res, {
-        statusCode: 404,
-        success: false,
-        message: "No issues found for the given criteria",
+        statusCode: 200,
+        success: true,
+        message: "Issues retrived successfully",
         data: []
       });
     }
@@ -523,7 +534,6 @@ var auth = () => {
         `,
         [decoded.id]
       );
-      console.log(userData.rows[0]);
       if (userData.rowCount === 0) {
         return sendResponse_default(res, {
           statusCode: 404,

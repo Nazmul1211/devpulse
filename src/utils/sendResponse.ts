@@ -10,12 +10,13 @@ type IResponse<T> = {
 
 const sendResponse = <T>(res: Response, payload: IResponse<T>) => {
   const { statusCode, success, message, data, error } = payload;
-  res.status(statusCode).json({
-    success,
-    message,
-    data,
-    error,
-  });
+
+  const responseBody: Record<string, unknown> = { success, message };
+
+  if (data !== undefined) responseBody.data = data;
+  if (error !== undefined) responseBody.error = error;
+
+  res.status(statusCode).json(responseBody);
 };
 
 export default sendResponse;

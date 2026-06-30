@@ -1,5 +1,5 @@
-export type IssueStatus = "open" | "in-progress" | "resolved" | "closed";
-export type IssueType = "bug" | "feature" | "enhancement";
+export type IssueStatus = "open" | "in_progress" | "resolved";
+export type IssueType = "bug" | "feature_request";
 
 export interface IIssue {
   id?: string | number;

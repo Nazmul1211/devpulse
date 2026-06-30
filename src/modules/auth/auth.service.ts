@@ -13,7 +13,6 @@ const createUserIntoDB = async (payload: IUser) => {
   //   console.log("auth-service: ",payload);
 
   const hashPassword = await bcrypt.hash(password, 10);
-  console.log(payload, hashPassword);
 
   const result = await pool.query(
     `
@@ -68,7 +67,6 @@ const getSingleUserFromDB = async (email: string, password: string) => {
 // Remove password before returning
   delete user.password;
 
-  console.log("auth-service", accessToken, userData);
   return {
     token: accessToken,
     user: userData.rows[0],

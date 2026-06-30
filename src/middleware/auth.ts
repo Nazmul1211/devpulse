@@ -41,7 +41,7 @@ const auth = () => {
         [decoded.id],
       );
 
-      console.log(userData.rows[0]);
+
 
     // const user = userData.rows[0];
 

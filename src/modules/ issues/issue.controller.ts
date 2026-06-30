@@ -19,7 +19,7 @@ const createNewIssues = async (req: Request, res: Response) => {
     }
   } catch (error: any) {
     sendResponse(res, {
-      statusCode: 401,
+      statusCode: 500,
       success: false,
       message: error.message,
     });
@@ -45,7 +45,7 @@ const getAllIssues = async (req: Request, res: Response) => {
     }
 
 
-    const validStatuses = ["open", "in_progress", "resolved", "closed"];
+    const validStatuses = ["open", "in_progress", "resolved"];
 
     if (queryParams.status && !validStatuses.includes(queryParams.status as string)) {
       return sendResponse(res, {
@@ -60,9 +60,9 @@ const getAllIssues = async (req: Request, res: Response) => {
 
     if (result.length === 0) {
       return sendResponse(res, {
-        statusCode: 404,
-        success: false,
-        message: "No issues found for the given criteria",
+        statusCode: 200,
+        success: true,
+        message: "Issues retrived successfully",
         data: []
       });
     }
